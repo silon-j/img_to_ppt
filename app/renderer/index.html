@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'">
+  <title>图片转 PPT</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="container">
+    <h1>图片转 PPT</h1>
+    <p class="subtitle">选择图片文件夹，一键生成 PowerPoint</p>
+
+    <!-- 图片文件夹 -->
+    <div class="field">
+      <label>图片文件夹</label>
+      <div class="row">
+        <input type="text" id="sourceDir" readonly placeholder="点击右侧按钮选择…">
+        <button id="btnSelectFolder">选择</button>
+      </div>
+      <span class="hint" id="imageCount"></span>
+    </div>
+
+    <!-- 保存位置 -->
+    <div class="field">
+      <label>保存位置</label>
+      <div class="row">
+        <input type="text" id="outputPath" readonly placeholder="点击右侧按钮选择…">
+        <button id="btnSelectSave">选择</button>
+      </div>
+    </div>
+
+    <!-- 进度 -->
+    <div class="progress-wrap" id="progressWrap" style="display:none">
+      <div class="progress-bar">
+        <div class="progress-fill" id="progressFill"></div>
+      </div>
+      <span class="progress-text" id="progressText"></span>
+    </div>
+
+    <!-- 生成按钮 -->
+    <button class="btn-primary" id="btnGenerate">生成 PPT</button>
+  </div>
+
+  <script src="renderer.js"></script>
+</body>
+</html>

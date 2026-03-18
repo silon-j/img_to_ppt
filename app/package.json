@@ -1,0 +1,34 @@
+{
+  "name": "img-to-ppt",
+  "version": "1.0.0",
+  "description": "图片转 PPT 桌面工具 — 选择文件夹，一键生成",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "pack": "electron-builder --dir",
+    "dist": "electron-builder"
+  },
+  "build": {
+    "appId": "com.img-to-ppt.app",
+    "productName": "图片转PPT",
+    "mac": {
+      "category": "public.app-category.productivity",
+      "target": "dmg"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "renderer/**",
+      "lib/**",
+      "node_modules/**"
+    ]
+  },
+  "devDependencies": {
+    "electron": "^33.0.0",
+    "electron-builder": "^25.0.0"
+  },
+  "dependencies": {
+    "image-size": "^2.0.2",
+    "pptxgenjs": "^3.12.0"
+  }
+}
