@@ -7,6 +7,7 @@ const $btnGenerate = document.getElementById('btnGenerate');
 const $progressWrap = document.getElementById('progressWrap');
 const $progressFill = document.getElementById('progressFill');
 const $progressText = document.getElementById('progressText');
+const $compressToggle = document.getElementById('compressToggle');
 
 // ── 选择图片文件夹 ──
 $btnFolder.addEventListener('click', async () => {
@@ -52,13 +53,23 @@ $btnGenerate.addEventListener('click', async () => {
   $progressText.textContent = '准备中…';
 
   try {
-    const result = await window.api.generatePPT({ sourceDir, outputPath });
+    const compress = $compressToggle.checked;
+    const result = await window.api.generatePPT({ sourceDir, outputPath, compress });
     if (result.error) {
       alert(result.error);
     } else {
       $progressFill.style.width = '100%';
-      $progressText.textContent = `完成！共生成 ${result.count} 页`;
-      alert(`PPT 已生成！\n共 ${result.count} 页\n保存到：${outputPath}`);
+      let msg = `PPT 已生成！\n共 ${result.count} 页\n保存到：${outputPath}`;
+      if (compress && result.savedBytes > 0) {
+        const origMB = (result.originalSize / 1048576).toFixed(1);
+        const compMB = (result.compressedSize / 1048576).toFixed(1);
+        const pct = Math.round((1 - result.compressedSize / result.originalSize) * 100);
+        $progressText.textContent = `完成！共 ${result.count} 页 | 图片 ${origMB}MB → ${compMB}MB（节省 ${pct}%）`;
+        msg += `\n\n图片压缩：${origMB}MB → ${compMB}MB（节省 ${pct}%）`;
+      } else {
+        $progressText.textContent = `完成！共生成 ${result.count} 页`;
+      }
+      alert(msg);
     }
   } catch (err) {
     alert('生成失败：' + err.message);

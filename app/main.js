@@ -7,7 +7,7 @@ let mainWindow;
 function createWindow() {
   mainWindow = new BrowserWindow({
     width: 600,
-    height: 420,
+    height: 480,
     resizable: false,
     titleBarStyle: 'hiddenInset',
     webPreferences: {
@@ -50,8 +50,8 @@ ipcMain.handle('select-save-path', async () => {
 });
 
 // ── IPC：生成 PPT ──
-ipcMain.handle('generate-ppt', async (_event, { sourceDir, outputPath }) => {
-  return generatePPT(sourceDir, outputPath, (current, total, name) => {
+ipcMain.handle('generate-ppt', async (_event, { sourceDir, outputPath, compress }) => {
+  return generatePPT(sourceDir, outputPath, { compress }, (current, total, name) => {
     mainWindow.webContents.send('progress', { current, total, name });
   });
 });

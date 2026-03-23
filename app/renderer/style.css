@@ -90,6 +90,27 @@ h1 {
   min-height: 16px;
 }
 
+/* ── 压缩开关 ── */
+.compress-field {
+  margin-bottom: 12px;
+}
+
+.toggle-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.toggle-label input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  accent-color: #0071e3;
+  cursor: pointer;
+}
+
 /* ── 进度条 ── */
 .progress-wrap {
   margin: 16px 0;

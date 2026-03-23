@@ -1,8 +1,13 @@
 const fs = require('fs');
 const path = require('path');
+const sharp = require('sharp');
 const PptxGenJS = require('pptxgenjs');
 
 const IMAGE_EXTS = new Set(['.png', '.jpg', '.jpeg', '.bmp', '.gif', '.tiff']);
+
+// 压缩目标：PPT 16:9 幻灯片最大分辨率
+const MAX_WIDTH = 2560;
+const MAX_HEIGHT = 1440;
 
 /**
  * 自然排序 key：数字按大小排，其余按 localeCompare（中文走拼音）
@@ -44,94 +49,98 @@ function collectImages(dirPath) {
 }
 
 /**
- * 从 Buffer 解析图片尺寸（支持 PNG / JPEG / BMP / GIF）
+ * 用 sharp 处理图片：获取尺寸 + 可选压缩
+ * @param {string} filePath 图片路径
+ * @param {boolean} compress 是否压缩
+ * @returns {Promise<{width, height, buffer, mimeType}>}
  */
-function getImageSize(filePath) {
-  const buf = fs.readFileSync(filePath);
+async function processImage(filePath, compress) {
+  const image = sharp(filePath);
+  const metadata = await image.metadata();
+  let { width, height } = metadata;
+  const hasAlpha = metadata.hasAlpha;
 
-  // PNG: 宽高在第 16-23 字节
-  if (buf[0] === 0x89 && buf[1] === 0x50 && buf[2] === 0x4e && buf[3] === 0x47) {
-    return { width: buf.readUInt32BE(16), height: buf.readUInt32BE(20) };
+  if (!compress) {
+    // 不压缩：直接读取原始文件
+    const buffer = fs.readFileSync(filePath);
+    const ext = path.extname(filePath).toLowerCase().replace('.', '');
+    const mimeType = ext === 'jpg' ? 'jpeg' : ext;
+    return { width, height, buffer, mimeType };
   }
 
-  // GIF: 宽高在第 6-9 字节 (little-endian)
-  if (buf[0] === 0x47 && buf[1] === 0x49 && buf[2] === 0x46) {
-    return { width: buf.readUInt16LE(6), height: buf.readUInt16LE(8) };
+  // ── 自适应压缩 ──
+  let pipeline = image;
+
+  // 超过最大分辨率则等比缩小
+  if (width > MAX_WIDTH || height > MAX_HEIGHT) {
+    pipeline = pipeline.resize(MAX_WIDTH, MAX_HEIGHT, {
+      fit: 'inside',
+      withoutEnlargement: true,
+    });
+    const ratio = Math.min(MAX_WIDTH / width, MAX_HEIGHT / height);
+    width = Math.round(width * ratio);
+    height = Math.round(height * ratio);
   }
 
-  // BMP: 宽高在第 18-25 字节
-  if (buf[0] === 0x42 && buf[1] === 0x4d) {
-    return { width: buf.readUInt32LE(18), height: Math.abs(buf.readInt32LE(22)) };
+  // 有透明通道 → PNG 压缩，否则 → JPEG（MozJPEG 质量 85）
+  let buffer, mimeType;
+  if (hasAlpha) {
+    buffer = await pipeline.png({ compressionLevel: 9, adaptiveFiltering: true }).toBuffer();
+    mimeType = 'png';
+  } else {
+    buffer = await pipeline.jpeg({ quality: 85, mozjpeg: true }).toBuffer();
+    mimeType = 'jpeg';
   }
 
-  // JPEG: 需要查找 SOF 标记
-  if (buf[0] === 0xff && buf[1] === 0xd8) {
-    let offset = 2;
-    while (offset < buf.length - 1) {
-      if (buf[offset] !== 0xff) break;
-      const marker = buf[offset + 1];
-      // SOF0 ~ SOF15 (排除 DHT/DRI 等)
-      if (marker >= 0xc0 && marker <= 0xcf && marker !== 0xc4 && marker !== 0xc8 && marker !== 0xcc) {
-        return { width: buf.readUInt16BE(offset + 7), height: buf.readUInt16BE(offset + 5) };
-      }
-      const segLen = buf.readUInt16BE(offset + 2);
-      offset += 2 + segLen;
-    }
-  }
-
-  throw new Error('无法识别图片格式: ' + path.basename(filePath));
+  return { width, height, buffer, mimeType };
 }
 
 /**
  * 生成 PPT
  * @param {string} sourceDir  图片文件夹路径
  * @param {string} outputPath 输出 .pptx 路径
+ * @param {object} options    { compress: boolean }
  * @param {Function} onProgress 进度回调 (current, total, fileName)
- * @returns {{ count: number }}
+ * @returns {{ count: number, savedBytes: number }}
  */
-async function generatePPT(sourceDir, outputPath, onProgress) {
+async function generatePPT(sourceDir, outputPath, options, onProgress) {
+  const compress = options?.compress ?? false;
   const images = collectImages(sourceDir);
   if (images.length === 0) {
     return { count: 0, error: '文件夹中没有找到图片' };
   }
 
   const pptx = new PptxGenJS();
-  // 16:9 宽屏
   pptx.defineLayout({ name: 'WIDE', width: 13.333, height: 7.5 });
   pptx.layout = 'WIDE';
 
-  const slideW = 13.333; // inches
+  const slideW = 13.333;
   const slideH = 7.5;
+  let totalOriginal = 0;
+  let totalCompressed = 0;
 
   for (let i = 0; i < images.length; i++) {
     const fileName = images[i];
     const filePath = path.join(sourceDir, fileName);
-    const dims = getImageSize(filePath);
+
+    const { width, height, buffer, mimeType } = await processImage(filePath, compress);
+
+    // 统计压缩效果
+    const originalSize = fs.statSync(filePath).size;
+    totalOriginal += originalSize;
+    totalCompressed += buffer.length;
 
     // 居中铺满（等比缩放）
-    const ratioW = slideW / dims.width;
-    const ratioH = slideH / dims.height;
-    const ratio = Math.min(ratioW, ratioH);
-
-    const picW = dims.width * ratio;
-    const picH = dims.height * ratio;
+    const ratio = Math.min(slideW / width, slideH / height);
+    const picW = width * ratio;
+    const picH = height * ratio;
     const left = (slideW - picW) / 2;
     const top = (slideH - picH) / 2;
 
-    // 读取图片为 base64
-    const imgData = fs.readFileSync(filePath);
-    const ext = path.extname(fileName).toLowerCase().replace('.', '');
-    const mimeType = ext === 'jpg' ? 'jpeg' : ext;
-    const base64 = `image/${mimeType};base64,` + imgData.toString('base64');
+    const base64 = `image/${mimeType};base64,` + buffer.toString('base64');
 
     const slide = pptx.addSlide();
-    slide.addImage({
-      data: base64,
-      x: left,
-      y: top,
-      w: picW,
-      h: picH,
-    });
+    slide.addImage({ data: base64, x: left, y: top, w: picW, h: picH });
 
     if (onProgress) {
       onProgress(i + 1, images.length, fileName);
@@ -139,7 +148,12 @@ async function generatePPT(sourceDir, outputPath, onProgress) {
   }
 
   await pptx.writeFile({ fileName: outputPath });
-  return { count: images.length };
+  return {
+    count: images.length,
+    originalSize: totalOriginal,
+    compressedSize: totalCompressed,
+    savedBytes: totalOriginal - totalCompressed,
+  };
 }
 
 module.exports = { generatePPT, collectImages };
