@@ -6,21 +6,26 @@
   "scripts": {
     "start": "electron .",
     "pack": "electron-builder --dir",
-    "dist": "electron-builder"
+    "dist": "electron-builder",
+    "postinstall": "electron-builder install-app-deps"
   },
   "build": {
     "appId": "com.img-to-ppt.app",
     "productName": "图片转PPT",
+    "directories": {
+      "output": "dist"
+    },
     "mac": {
       "category": "public.app-category.productivity",
-      "target": "dmg"
+      "target": [
+        { "target": "dmg", "arch": ["arm64", "x64"] }
+      ]
     },
     "files": [
       "main.js",
       "preload.js",
       "renderer/**",
-      "lib/**",
-      "node_modules/**"
+      "lib/**"
     ]
   },
   "devDependencies": {

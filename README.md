@@ -2,37 +2,43 @@
 
 一键将文件夹中的图片生成为 PowerPoint 演示文稿，每页一张图片，居中等比铺满。
 
-提供两种使用方式：
+**核心功能：**
+- 选择图片文件夹 → 指定保存位置 → 点击生成，全程无命令行
+- 自适应图片压缩：大图自动缩放 + MozJPEG 编码，典型场景节省 60-90% 体积，肉眼无损
+- 文件名自然排序（数字按大小、中文按拼音），与 Finder 排列一致
+- 支持 PNG、JPG、BMP、GIF、TIFF，有透明通道自动保留
 
-- **桌面应用** — Electron GUI，选择文件夹 → 点击生成 → 导出 .pptx
-- **命令行脚本** — Python 脚本，适合批量/自动化场景
+## 下载安装
+
+前往 [Releases](../../releases) 页面下载最新 `.dmg`：
+- Apple Silicon Mac（M 系列）→ `图片转PPT-arm64.dmg`
+- Intel Mac → `图片转PPT-x64.dmg`
 
 ## 项目结构
 
 ```
-├── app/                    # Electron 桌面应用
-│   ├── main.js             # 主进程
+├── .github/workflows/
+│   └── release.yml         # CI/CD：打 tag 自动发布 Release
+├── app/                    # Electron 桌面应用（主体）
+│   ├── main.js             # 主进程：窗口管理 + IPC 路由
 │   ├── preload.js          # 安全桥接
 │   ├── renderer/           # 前端界面
 │   │   ├── index.html
 │   │   ├── style.css
 │   │   └── renderer.js
 │   ├── lib/
-│   │   └── pptGenerator.js # PPT 生成核心
+│   │   └── pptGenerator.js # PPT 生成 + 图片压缩核心
 │   └── package.json
-├── python/                 # Python 命令行版
-│   ├── make_ppt.py
-│   └── requirements.txt
-└── .gitignore
+├── docs/                   # 技术文档
+│   ├── architecture.md     # 架构说明
+│   ├── getting-started.md  # 新手指引
+│   └── development-guide.md# 开发规范
+└── python/                 # ⚠️ 遗留命令行版本，不再维护
 ```
 
-## 桌面应用
+## 本地开发
 
-### 环境要求
-
-- Node.js >= 18
-
-### 安装 & 运行
+**环境要求**：Node.js >= 18
 
 ```bash
 cd app
@@ -40,44 +46,27 @@ npm install
 npx electron .
 ```
 
-操作步骤：
-
-1. 点击「选择」按钮选取图片文件夹
-2. 点击「选择」按钮指定 PPT 保存位置
-3. 点击「生成 PPT」
-
-### 打包分发
+## 打包发布
 
 ```bash
 cd app
-npm run dist
+npm run dist        # 本地打包
 ```
 
-生成的 `.dmg` 文件在 `app/dist/` 目录下，双击安装即可使用。
-
-## Python 命令行版
-
-### 环境要求
-
-- Python >= 3.9
-
-### 安装 & 运行
+或推送 tag 触发 GitHub Actions 自动打包：
 
 ```bash
-cd python
-pip install -r requirements.txt
-python make_ppt.py
+git tag v1.x.x
+git push origin v1.x.x
 ```
 
-默认读取项目根目录下的 `source/` 文件夹，输出 `output.pptx` 到项目根目录。
+## 文档
 
-## 支持的图片格式
-
-PNG、JPG/JPEG、BMP、GIF、TIFF
-
-## 排序规则
-
-按文件名自然排序（数字按大小、中文按拼音），与 macOS Finder 排序一致。
+| 文档 | 说明 |
+|------|------|
+| [架构说明](docs/architecture.md) | 进程模型、IPC 通道、PPT 生成流程、压缩策略 |
+| [新手指引](docs/getting-started.md) | 安装步骤、使用方法、常见问题 |
+| [开发规范](docs/development-guide.md) | 目录约定、代码风格、发布流程 |
 
 ## License
 
