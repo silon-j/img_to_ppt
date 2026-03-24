@@ -44,3 +44,18 @@ jobs:
             app/dist/*.zip
           generate_release_notes: true
           fail_on_unmatched_files: false
+          body: |
+            ## 安装说明
+
+            | 机型 | 下载文件 |
+            |------|----------|
+            | Apple Silicon（M 系列） | `图片转PPT-arm64.dmg` |
+            | Intel Mac | `图片转PPT-x64.dmg` |
+
+            ### ⚠️ macOS 安全提示
+
+            应用未经 Apple 官方签名，安装后需在终端执行以下命令解除限制，之后正常双击打开即可：
+
+            ```bash
+            sudo xattr -cr /Applications/图片转PPT.app
+            ```
